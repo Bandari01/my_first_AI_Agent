@@ -17,7 +17,7 @@ statsmodels
 
 # Machine Learning
 xgboost
-lightgbm、
+lightgbm
 scikit-learn
 
 # Utilities
