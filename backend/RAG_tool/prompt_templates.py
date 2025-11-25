@@ -1,6 +1,7 @@
 """
 Prompt templates for specific competition types
 """
+
 STORE_SALES_TEMPLATE = """
 You are solving the Store Sales - Time Series Forecasting competition on Kaggle.
 

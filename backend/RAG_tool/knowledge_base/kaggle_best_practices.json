@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Competition data structure",
+    "type": "guideline",
+    "content": "Kaggle competitions usually provide train.csv, test.csv, and sometimes other files such as sample_subsubmission. Always check the data description to understand the meaning of the column. Verify the submission format requirements before generating the prediction.",
+    "tags": ["kaggle", "competition", "data-structure", "submission"]
+  },
+  {
+    "title": "Cross-validation strategy",
+    "type": "methodology",
+    "content": "Use appropriate cross-validation based on the problem type: TimeSeriesSplit for time series and StratifiedKFold for class imbalance classification. Always use multiple discounts to obtain reliable performance estimates.",
+    "tags": ["cross-validation", "validation", "model-evaluation"]
+  },
+  {
+    "title": "Analysis of Feature Importance",
+    "type": "technique",
+    "content": "Identify key predictors using feature importance or permutation importance based on tree models. This is helpful for feature selection and understanding the problem domain. Visualize important features to gain better insights.",
+    "tags": ["feature-importance", "model-interpretation", "feature-selection"]
+  },
+  {
+    "title": "Code integrity and executability",
+    "type": "best_practice",
+    "content": "The generated code must include all necessary imports, complete error handling, and detailed log outputs. Each major step should have try-except and progress print. Ultimately, a submite.csv file in the correct format must be generated.",
+    "tags": ["code-quality", "error-handling", "best-practices"]
+  },
+  {
+    "title": "Store Sales submit the requirements",
+    "type": "submission",
+    "content": "The submitted file must be in CSV format, containing two columns: id and sales, with a total of 28,512 lines. The file must have a header. The predicted value must be non-negative. The file name is submite.csv.",
+    "tags": ["submission", "csv", "store-sales"]
+  },
+  {
+    "title": "Best practices for encoding categorical variables",
+    "type": "best_practice",
+    "content": "For the tree model, LabelEncoder is used to encode the categorical variables. Encoding must be carried out after data segmentation to ensure that the training set and the test set use the same encoding mapping. The name of the encoded feature should be explicit, such as 'family_encoded'. Never use raw string features in model training.",
+    "tags": ["encoding", "best-practice", "categorical"]
+  }
+]

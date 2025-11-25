@@ -1,12 +1,12 @@
 """
-简化的代码执行器
+Simplified code executor
 
-功能：
-- 执行生成的 Python 代码（以子进程隔离）
-- 若执行失败（返回码非 0 或出现异常），将 traceback 与原始代码发给项目的 LLM 客户端，请求修正后的代码
-- 将 LLM 返回的修正代码抽取并重试执行，最多重试若干次
+Features:
+- Execute generated Python code in an isolated subprocess
+- If execution fails (non-zero return code or exception), send the traceback and original code to the project's LLM client to request a fixed version
+- Retry execution with the fixed code up to a maximum number of attempts
 
-注意：此模块依赖 `backend.llm.llm_client.LLMClient` 的 `generate(prompt)` 方法，返回值的 `.content` 包含 LLM 生成的修正代码（最好包含 ```python ``` 代码块）。
+Note: This module depends on `backend.llm.llm_client.LLMClient.generate(prompt)`. The return object's `.content` should contain the fixed code.
 """
 from dataclasses import dataclass
 import subprocess
@@ -14,9 +14,10 @@ import sys
 import tempfile
 import time
 import os
-import re
 from pathlib import Path
 from typing import Optional
+import re
+
 
 from backend.utils.logger import get_logger
 from backend.llm.llm_client import LLMClient
@@ -34,17 +35,38 @@ class ExecutionResult:
 
 
 class GeneratedCodeExecutor:
-    """只执行生成代码并在错误时请求 LLM 修正的执行器"""
+    """Execute generated code and request LLM-based fixes on failure."""
 
-    def __init__(self, timeout: int = 300, max_fix_attempts: int = 3):
+    def __init__(self, timeout: int = 300, max_fix_attempts: int = 1):
         self.timeout = timeout
         self.max_fix_attempts = max_fix_attempts
-        # 初始化 LLM 客户端（使用默认环境配置）
+        # Initialize LLM client (uses default environment configuration)
         try:
             self.llm = LLMClient()
         except Exception as e:
-            logger.warning(f"无法初始化 LLMClient: {e}")
+            logger.warning(f"Cannot initialize LLMClient: {e}")
             self.llm = None
+
+    def _strip_markdown_code_fences(self, code: str) -> str:
+        """
+        Remove Markdown code fences like ```python ... ``` if present.
+        """
+        if not code:
+            return ""
+
+        code = code.strip()
+
+        if code.startswith("```"):
+            lines = code.splitlines()
+            if lines:
+                first = lines[0].strip()
+                if first.startswith("```"):
+                    lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            code = "\n".join(lines).strip()
+
+        return code
 
     def _run_subprocess(self, code: str, working_dir: Optional[Path] = None, env: Optional[dict] = None) -> ExecutionResult:
         start = time.time()
@@ -73,68 +95,62 @@ class GeneratedCodeExecutor:
             except Exception:
                 pass
 
-    def _extract_code_from_response(self, text: str) -> str:
-        # 首先尝试抓取 ```python ... ``` 区块
-        m = re.search(r"```(?:python)?\s*([\s\S]*?)```", text, flags=re.IGNORECASE)
-        if m:
-            return m.group(1).strip()
-        # 回退：尝试提取第一个 def/class 或以 import 开头的代码段
-        return text.strip()
-
     def _ask_llm_to_fix(self, original_code: str, traceback_text: str) -> Optional[str]:
         if not self.llm:
-            logger.error("LLM client 未初始化，无法请求修复")
+            logger.error("LLM client not initialized; cannot request fix")
             return None
 
         prompt = (
-            "你的任务：修复下面的 Python 代码。\n"
-            "要求：返回 **仅** 修正后的完整 Python 代码（如果可能，请用 ```python ``` 包裹）。\n\n"
-            "=== 原始代码 ===\n"
+            "Your task: Fix the following Python code.\n"
+            "Requirement: Return ONLY the corrected, full Python code.\n\n"
+            "=== Original Code ===\n"
             f"{original_code}\n\n"
-            "=== 发生的错误/Traceback ===\n"
+            "=== Error / Traceback ===\n"
             f"{traceback_text}\n\n"
-            "请直接返回修正后的代码，不要返回解释或额外文本。"
+            "Return only the fixed code, with no explanations or extra text."
         )
 
         try:
             resp = self.llm.generate(prompt)
-            return self._extract_code_from_response(resp.content)
+            raw = (resp.content if hasattr(resp, "content") else str(resp))
+            fixed = self._strip_markdown_code_fences(raw)
+            return fixed
         except Exception as e:
-            logger.error(f"请求 LLM 修复失败：{e}")
+            logger.error(f"Request to LLM for fix failed: {e}")
             return None
 
     def execute_and_autofix(self, code: str, working_dir: Optional[Path] = None, env: Optional[dict] = None) -> ExecutionResult:
-        """执行代码，若失败则调用 LLM 修复并重试（最多 self.max_fix_attempts 次）。"""
+        """Execute code; on failure, request LLM fix and retry up to max attempts."""
         attempt = 0
-        current_code = code
+        current_code = self._strip_markdown_code_fences(code)
 
         while True:
             attempt += 1
-            logger.info(f"执行代码，尝试 #{attempt}")
+            logger.info(f"Execute code, attempt #{attempt}")
             result = self._run_subprocess(current_code, working_dir, env)
 
             if result.success:
-                logger.info(f"代码执行成功 (attempt={attempt}, time={result.execution_time:.2f}s)")
+                logger.info(f"Code executed successfully (attempt={attempt}, time={result.execution_time:.2f}s)")
                 return result
 
-            # 执行失败
+            # Execution failed
             tb = result.error or ""
             error_summary = tb.strip()
-            error_message = f"代码执行失败 (return_code={result.return_code})" + (f"\n错误信息: {error_summary[:400]}..." if error_summary else "")
-            logger.warning(f"{error_message}，准备请求 LLM 修复")
+            error_message = f"Execution failed (return_code={result.return_code})" + (f"\nError: {error_summary[:400]}..." if error_summary else "")
+            logger.warning(f"{error_message}. Preparing to request LLM fix")
 
             if attempt > self.max_fix_attempts:
-                logger.error(f"已达到最大修复尝试次数 ({self.max_fix_attempts})，停止重试")
+                logger.error(f"Reached maximum fix attempts ({self.max_fix_attempts}); stopping retries")
                 return result
 
             fixed = self._ask_llm_to_fix(current_code, tb or "No stderr captured")
             if fixed:
-                logger.info("LLM 返回修正代码，准备下一次尝试...")
+                logger.info("LLM returned fixed code, preparing next attempt...")
             if not fixed:
-                logger.error("LLM 未返回修正代码或请求失败，停止重试")
+                logger.error("LLM did not return fixed code or request failed; stopping retries")
                 return result
 
-            logger.info("LLM 返回修正代码，进行下一次尝试")
+            logger.info("LLM returned fixed code; proceeding to next attempt")
             current_code = fixed
 
 

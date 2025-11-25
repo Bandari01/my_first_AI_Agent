@@ -1,5 +1,7 @@
 # Python
 __pycache__/
+*/__pycache__/
+*.pyc
 
 # Virtual Environment
 .venv/
@@ -8,7 +10,7 @@ __pycache__/
 .env
 logs/
 data/
-knowledge_base/
+code/
 
 # API Keys
 kaggle.json

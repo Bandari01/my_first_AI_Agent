@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  kaggle-agent:
+    build: .
+    container_name: kaggle-agent
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./output:/app/output
+    restart: unless-stopped
+    # Optional: If you want to develop and see changes immediately, uncomment the following line
+    # - .:/app

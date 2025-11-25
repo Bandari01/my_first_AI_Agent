@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Categorical Variable Encoding Best Practices",
+    "type": "best_practice",
+    "content": "For tree-based models, use LabelEncoder instead of OneHotEncoder. Ensure the training set and test set use the same encoder to avoid feature inconsistency. Handle potential unseen categories in the test set. For the Store Sales competition, you must encode family, city, state, type.",
+    "tags": ["categorical", "encoding", "preprocessing"]
+  },
+  {
+    "title": "Data Merging Patterns",
+    "type": "pattern",
+    "content": "When merging multiple tables, pay attention to key matching. Store Sales requires merging store data by store_nbr, oil price data by date, and transaction data by date and store_nbr. Holiday data should not be merged directly; instead create flag variables to avoid explosive growth in row count.",
+    "tags": ["data-merging", "joins", "store-sales"]
+  },
+  {
+    "title": "Missing Value Handling Strategies",
+    "type": "technique",
+    "content": "For time series data, use forward fill (ffill) for missing values. For numerical missing values, use 0 for filling. For categorical variable missing values, use mode or specific categories. In Store Sales, use ffill for oil prices and 0 for transactions.",
+    "tags": ["missing-values", "imputation", "time-series"]
+  },
+  {
+    "title": "Categorical Variable Encoding Pattern",
+    "type": "pattern",
+    "content": "For tree-based models, use LabelEncoder to encode categorical variables. Encoding steps: 1) Import LabelEncoder, 2) Create encoder instance, 3) fit_transform on training set, 4) transform on test set. Ensure using the same encoder for both training and test sets.",
+    "tags": ["encoding", "categorical", "labelencoder"]
+  },
+  {
+    "title": "Data Validation and Column Name Checking",
+    "type": "best_practice",
+    "content": "Before writing data processing code, you should first validate the column names of dataframes. You can use print(df.columns) or print(list(df.columns)) to check actual column names. Ensure every column name used in the code actually exists in the dataframe.",
+    "tags": ["data-validation", "column-names", "best-practice"]
+  },
+  {
+    "title": "Categorical Variable Encoding Check Pattern",
+    "type": "pattern",
+    "content": "Add data validation steps before model training: 1) Print feature data types, 2) Check if there are non-numeric types, 3) If yes, perform encoding. Code example: print('Feature dtypes:', X.dtypes); # If you see object type, encoding is needed; from sklearn.preprocessing import LabelEncoder; le = LabelEncoder(); X['family_encoded'] = le.fit_transform(X['family'])",
+    "tags": ["validation", "encoding", "pattern"]
+  }
+]

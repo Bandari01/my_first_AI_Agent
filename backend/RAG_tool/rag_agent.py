@@ -1,6 +1,7 @@
 """
-RAG Agent moved into backend.agents package for unified agent handling.
+RAG Agent - completely compatible
 """
+
 import time
 import asyncio
 import os
@@ -32,24 +33,18 @@ class RAGResult:
 class RAGAgent:
     def __init__(self, config):
         self.config = config
-        # knowledge retriever lives in backend.RAG_tool
-        from ..RAG_tool.knowledge_retriever import KnowledgeRetriever
+        from .knowledge_retriever import KnowledgeRetriever
         self.retriever = KnowledgeRetriever(config.knowledge_base_path)
         self.retrieval_count = 0
         self.llm_call_count = 0
 
         # Initialize OpenAI client with API key
         if OPENAI_AVAILABLE:
-            api_key = getattr(config, 'openai_api_key', None) or os.getenv('OPENAI_API_KEY')
+            # Use API key from config if provided, otherwise use environment variable
+            api_key = config.openai_api_key or os.getenv('OPENAI_API_KEY')
             if api_key:
-                try:
-                    # Attempt to initialize the AsyncOpenAI client; be defensive about constructor errors
-                    self.llm_client = AsyncOpenAI(api_key=api_key)
-                    print("OpenAI client initialized with API key")
-                except Exception as e:
-                    # Don't crash initialization; mark client as unavailable and record reason
-                    self.llm_client = None
-                    print(f"Warning: Failed to initialize OpenAI client: {e}")
+                self.llm_client = AsyncOpenAI(api_key=api_key)
+                print("OpenAI client initialized with API key")
             else:
                 self.llm_client = None
                 print("Warning: No OpenAI API key provided")
@@ -62,6 +57,7 @@ class RAGAgent:
         reasoning_steps = []
 
         try:
+            # Check if OpenAI client is available
             if not self.llm_client:
                 return RAGResult(
                     status="failed",
@@ -74,15 +70,19 @@ class RAGAgent:
                     error_message="OpenAI API key not configured properly"
                 )
 
+            # Step 1: Retrieve knowledge
             reasoning_steps.append("Analyzing problem and retrieving relevant knowledge...")
             retrieved_knowledge = await self._retrieve_relevant_knowledge(problem_description, data_info)
 
+            # Step 2: Build enhanced prompt
             reasoning_steps.append("Building enhanced context with retrieved knowledge...")
             enhanced_prompt = self._build_enhanced_prompt(problem_description, data_info, retrieved_knowledge)
 
+            # Step 3: Generate solution
             reasoning_steps.append("Generating solution with knowledge-enhanced context...")
             solution_result = await self._generate_solution(enhanced_prompt)
 
+            # Step 4: Validate if enabled
             if self.config.enable_validation:
                 reasoning_steps.append("Validating and refining solution...")
                 final_code = await self._validate_and_refine(solution_result, retrieved_knowledge)
@@ -138,13 +138,60 @@ class RAGAgent:
         knowledge_context = self._format_knowledge_context(retrieved_knowledge)
         data_context = self._format_data_context(data_info)
 
+        # Check if it is Store Sales competition
         is_store_sales = "store-sales" in problem_description.lower()
 
         if is_store_sales:
             task_specific_instructions = """
 ## STORE SALES COMPETITION SPECIFIC REQUIREMENTS:
 
-... (omitted for brevity in-source) ...
+### CRITICAL REQUIREMENTS:
+1. The code MUST generate a submission.csv file with columns 'id' and 'sales'
+2. Handle categorical variables properly (use LabelEncoder or OneHotEncoder for 'family', 'city', 'state', 'type')
+3. Use time-series appropriate validation (TimeSeriesSplit, not random split)
+4. Merge data correctly: 
+   - train/test with stores on 'store_nbr'
+   - with oil on 'date' 
+   - with transactions on ['date', 'store_nbr']
+   - holidays should be handled as flags, not merged directly (to avoid row explosion)
+5. Test set has 28512 records - ensure predictions match this count
+6. Include proper error handling and logging
+7. Ensure no negative predictions (use np.maximum(0, predictions))
+
+### DATA FILES AND STRUCTURE:
+- train.csv: id, date, store_nbr, family, sales, onpromotion
+- test.csv: id, date, store_nbr, family, onpromotion  
+- stores.csv: store_nbr, city, state, type, cluster
+- oil.csv: date, oil
+- holidays_events.csv: date, type, locale, locale_name, description, transferred
+- transactions.csv: date, store_nbr, transactions
+
+### FEATURE ENGINEERING REQUIREMENTS:
+- Extract date features: year, month, day, day_of_week, is_weekend
+- Create holiday flags from holidays_events.csv (only non-transferred holidays)
+- Handle missing values in oil prices (forward fill)
+- Include store metadata (city, state, type, cluster)
+- Include transactions data aggregated by date and store
+- Encode all categorical variables properly
+
+### MODELING REQUIREMENTS:
+- Use time-series appropriate model (RandomForest, XGBoost, LightGBM)
+- Use time-series cross-validation or time-based split
+- Target metric: RMSLE (Root Mean Squared Logarithmic Error)
+- Ensure predictions are non-negative
+
+### SUBMISSION REQUIREMENTS:
+- File name: submission.csv
+- Columns: id, sales
+- Must have 28512 rows matching test set
+- No index column in output
+
+## CODE STRUCTURE REQUIREMENTS:
+1. Complete, runnable Python code
+2. Proper error handling with try/except
+3. Informative logging/print statements
+4. All necessary imports included
+5. Code must execute without errors and produce submission.csv
 """
         else:
             task_specific_instructions = """
@@ -181,6 +228,7 @@ Generate complete Python code that:
 The code should be complete, runnable, and include all necessary imports.
 
 Please provide the complete Python code:
+```python
 """
         return enhanced_prompt
 
@@ -209,6 +257,7 @@ Please provide the complete Python code:
         if 'test_files' in data_info and data_info['test_files']:
             context_parts.append("Test files: " + ", ".join(data_info['test_files']))
 
+        # Add detailed file information if available
         if 'all_files_info' in data_info and data_info['all_files_info']:
             context_parts.append("\nDetailed file information:")
             for file_name, file_info in data_info['all_files_info'].items():
@@ -242,65 +291,17 @@ IMPORTANT: For Store Sales competition, ensure the code handles data merging cor
         ]
 
         try:
-            # Robust LLM invocation with timeout and retry support.
-            timeout = getattr(self.config, 'llm_timeout', 60)
-            max_retries = max(getattr(self.config, 'max_retries', 1), 1)
-            response = None
+            response = await self.llm_client.chat.completions.create(
+                model=self.config.llm_model,
+                messages=messages,
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens
+            )
 
-            for attempt in range(max_retries):
-                attempt_no = attempt + 1
-                print(f"LLM call attempt {attempt_no}/{max_retries} (timeout={timeout}s)")
+            self.llm_call_count += 1
+            content = response.choices[0].message.content
 
-                try:
-                    # Direct async call since we are using AsyncOpenAI
-                    coro = self.llm_client.chat.completions.create(
-                        model=self.config.llm_model,
-                        messages=messages,
-                        temperature=self.config.temperature,
-                        max_tokens=self.config.max_tokens
-                    )
-                    response = await asyncio.wait_for(coro, timeout=timeout)
-
-                    # If we got a response, increment counter and break
-                    self.llm_call_count += 1
-                    print(f"LLM call succeeded on attempt {attempt_no}")
-                    break
-
-                except asyncio.TimeoutError:
-                    print(f"LLM call timed out on attempt {attempt_no}/{max_retries}")
-                    response = None
-                    if attempt_no >= max_retries:
-                        raise Exception("LLM call timed out after retries")
-                    else:
-                        continue
-                except Exception as e:
-                    print(f"LLM call error on attempt {attempt_no}/{max_retries}: {e}")
-                    response = None
-                    if attempt_no >= max_retries:
-                        raise
-                    else:
-                        continue
-
-            # Defensive checks: ensure response has expected attributes
-            content = None
-            if response is None:
-                raise Exception("LLM returned no response (None)")
-
-            # Try multiple safe-access patterns to extract content
-            try:
-                # OpenAI-like structured response
-                content = response.choices[0].message.content
-            except Exception:
-                try:
-                    # Alternate path: older/newer SDK shapes
-                    content = response.choices[0].text
-                except Exception:
-                    # Last resort: stringify the response
-                    content = getattr(response, 'text', None) or str(response)
-
-            if not content:
-                raise Exception("LLM response contained no usable content")
-
+            # Extract code from markdown if present
             if "```python" in content:
                 start = content.find("```python") + 9
                 end = content.find("```", start)
@@ -312,13 +313,13 @@ IMPORTANT: For Store Sales competition, ensure the code handles data merging cor
             else:
                 code = content
 
+            # Ensure code ends with proper file generation
             if "submission.csv" not in code and "store-sales" in enhanced_prompt.lower():
                 code += "\n\n# Ensure submission file is created\nif 'submission' in locals():\n    submission.to_csv('submission.csv', index=False)\n    print('Submission file created successfully!')\nelse:\n    print('Error: Submission dataframe not created')"
 
             return code
 
         except Exception as e:
-            # Surface a clear error while preserving stack info
             raise Exception(f"OpenAI API error: {str(e)}")
 
     async def _validate_and_refine(self, initial_solution, knowledge):
@@ -394,4 +395,4 @@ IMPORTANT: For Store Sales competition, ensure the code handles data merging cor
                 return content
         except Exception as e:
             print(f"Validation failed: {e}")
-            return initial_solution
+            return initial_solution  # Return original if validation fails_build_enhanced_prompt

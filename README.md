@@ -2,11 +2,9 @@
 
 An AI-powered data analysis system based on multiple agent architectures, capable of automatically solving Kaggle competition problems.
 
-app_cag_multi_aux_en.py 与 cag_runner.py 目前并非CAG内容，请忽略
-
 ## 🎯 Overview
 
-This project implements two AI agent architectures — **ReAct** and **RAG** — for end-to-end automated data analysis and Kaggle submission generation. By simply providing a Kaggle competition link and selecting an AI architecture, the system will automatically:
+This project implements four AI agent architectures — **Direct LLM Prediction (DLP)**, **ReAct**, **RAG** and **Multi-Agent** — for end-to-end automated data analysis and Kaggle submission generation. By simply providing a Kaggle competition link and selecting an AI architecture, the system will automatically:
 
 * Retrieve and analyze the dataset
 * Generate and execute analytical/modeling code
@@ -15,15 +13,25 @@ This project implements two AI agent architectures — **ReAct** and **RAG** —
 
 ## 🏗️ System Architecture
 
-### Architecture 1: ReAct Agent (Reasoning + Acting Loop)
+### Architecture 1: DLP Agent (Direct LLM Prediction)
 
-* Iterative **think → act → observe** process
-* Suitable for multi-step reasoning and exploratory data analysis tasks
+* Directly uses the LLM model to perform predictions on the data.
+* Leverages the model's internal knowledge for prediction tasks.
 
-### Architecture 2: RAG Agent (Retrieval-Augmented Generation)
+### Architecture 2: ReAct Agent (Reasoning + Acting Loop)
 
-* Retrieves similar competition data and code snippets from the **knowledge_base/**
-* Combines retrieved templates to generate more robust and feature-rich analytical code
+* Uses LLM to generate machine learning code and automatically fixes errors.
+* Iterative **think → act → observe** process suitable for exploratory tasks.
+
+### Architecture 3: RAG Agent (Retrieval-Augmented Generation)
+
+* Retrieves similar competition data and code snippets from the **knowledge_base/**.
+* Uses data retrieval to generate better and more robust analytical code.
+
+### Architecture 4: Multi-Agent System
+
+* Uses LLM to first generate a comprehensive plan, then executes it step-by-step.
+* Coordinates execution to complete complex tasks.
 
 > Users can select the preferred agent type in the frontend; the system will automatically execute the corresponding workflow.
 
@@ -32,106 +40,83 @@ This project implements two AI agent architectures — **ReAct** and **RAG** —
 ```
 ai-agent-analytics/
 ├── backend/
-│   ├── agents/              # AI agent implementations (ReAct, RAG)
-│   ├── kaggle/              # Kaggle API integration for data download and submission
-│   ├── executor/            # Code execution engine (sandboxed with logging)
-│   ├── evaluation/          # Evaluation metrics and performance tracking
-|   ├── RAG_tool/            # Knowledge base for RAG
-│   └── utils/               # Utility functions
+│   ├── agents/              # Agent implementations (DLP, ReAct, RAG, Multi-Agent)
+│   ├── evaluation/          # Evaluation metrics and comparison tools
+│   ├── executor/            # Code execution engine
+│   ├── kaggle/              # Kaggle API integration
+│   ├── llm/                 # LLM client wrapper
+│   ├── RAG_tool/            # RAG specific tools and knowledge base
+│   ├── utils/               # Utility functions
+│   └── config.py            # Backend configuration
+├── data/                    # Data storage (competitions, generated code)
 ├── frontend/
-│   └── app.py               # Streamlit frontend entry point
+│   └── app.py               # Streamlit frontend application
+├── log/                     # Application logs
+├── output/                  # Generated submission files
 ├── .env.example             # Environment variable template
-├── requirements.txt
-└── README.md
+├── docker-compose.yml       # Docker composition
+├── Dockerfile               # Docker build instructions
+├── requirements.txt         # Python dependencies
+└── README.md                # Project documentation
 ```
 
 ## 🚀 Quick Start
 
-### 1) Environment Setup
+### 1) Prerequisites
 
-* **Python**: Recommended version 3.11 (newer versions may cause dependency conflicts)
-* **OS**: macOS / Linux / Windows (PowerShell or CMD)
+* **Docker Desktop**: Ensure Docker is installed and running.
+* **Kaggle API Key**: You need `kaggle.json` to get your username and key.
 
-```bash
-# Clone repository
-git clone https://github.com/unsw-cse-comp99-3900/capstone-project-25t3-9900-w16a-bread.git
-cd capstone-project-25t3-9900-w16a-bread
+### 2) Configure Environment
 
-# Create virtual environment (recommended name: .venv)
-python -m venv .venv
-
-# Activate virtual environment
-# macOS / Linux
-source .venv/bin/activate
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
-# Windows (CMD)
-.venv\Scripts\activate.bat
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-> When using VS Code, `.venv` is automatically detected. Ensure `.venv/` is listed in `.gitignore`.
-
-### 2) Configure Kaggle API
+Create a `.env` file in the root directory:
 
 ```bash
-# Copy environment variable template
 cp .env.example .env
 ```
 
-Fill in your `.env` file:
+Fill in your `.env` file with your Kaggle credentials and OpenAI API key:
 
 ```
 KAGGLE_USERNAME=your_username
 KAGGLE_KEY=your_api_key
-OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=llama3
+OPENAI_API_KEY=your_openai_api_key
 ```
 
-Get your API token from: [https://www.kaggle.com/settings/account](https://www.kaggle.com/settings/account)
-You can also place your `kaggle.json` in:
-
-* macOS/Linux: `~/.kaggle/kaggle.json`
-* Windows: `%USERPROFILE%\.kaggle\kaggle.json`
-
-### 3) Start LLM (Ollama)
+### 3) Build and Run with Docker Compose
 
 ```bash
-# Install from https://ollama.ai/
-ollama pull llama3
-ollama serve
+# Build and start the services
+docker-compose up --build
 ```
 
-> To switch models, modify `OLLAMA_MODEL` in `.env`. Remote or cloud-based LLMs can also be integrated via compatible API endpoints.
+This command will:
+1. Build the Docker image with all dependencies (Python 3.10, LightGBM, etc.).
+2. Start the Streamlit frontend application.
 
-### 4) Run Backend & Frontend
+### 4) Access the Application
 
-**You may need to restart your terminal before starting the app to ensure all dependencies are properly applied.**
+Once the container is running, open your browser and navigate to:
 
-**Frontend (Streamlit)**
-
-```bash
-# Run the Streamlit app
-streamlit run frontend/app.py
-```
-
-Access the app at: `http://localhost:8501`
+`http://localhost:8501`
 
 ## 🧭 Usage
 
 1. Open `http://localhost:8501`
-2. Enter a Kaggle competition link (e.g. `https://www.kaggle.com/competitions/store-sales-time-series-forecasting`)
-3. Select the AI architecture (**ReAct** or **RAG**)
-4. Click **“Generate & Run”**
+2. Enter a Kaggle competition link or name (e.g. `https://www.kaggle.com/competitions/store-sales-time-series-forecasting`)
+3. Select the AI architecture (e.g. **ReAct** or **RAG**)
+4. Click **Fetch & Analyze Competition**
+5. View the summary of the kaggle problem data
+6. Click **Run Agent 🚀**
 5. View real-time logs, generated code, and outputs
-6. Download the resulting `submission.csv`
+6. Download the resulting `submission.csv` or the generated code
 
 ## 📊 Evaluation Metrics
-
+* Final prediction accuracy  (Kaggle leaderboard)
+* Task success rate (Percentage of successful runs)
+* Quality of data preprocessing (Evaluation of missing values, categorical variable handling)
+* Feature engineering quality (evaluating new features)
 * Execution time (overall and by stage)
-* Prediction accuracy (Kaggle leaderboard / CV metrics)
 * Explainability (feature importance, visualizations, text reports)
 * Autonomy (human interaction count, tool usage, retry rate)
 * Code complexity (lines, dependencies, cyclomatic complexity)
@@ -139,14 +124,8 @@ Access the app at: `http://localhost:8501`
 
 ## ❓ FAQ
 
-**Q1: Dependency installation fails or version conflict?**
-A: Use Python 3.11. If pip fails, try `pip install -r requirements.txt --use-pep517` or fix versions manually.
+**Q1: What manual setup is required?**
+A: You must create a `.env` file and populate it with your personal credentials (Kaggle API keys, OpenAI API key). This step cannot be automated and must be completed before running the application.
 
-**Q2: Streamlit runs but backend returns 404?**
-A: Ensure Uvicorn backend is running and the frontend `.env` or config points to `http://localhost:8000`.
-
-**Q3: Kaggle API download fails?**
-A: Verify `.env` or `~/.kaggle/kaggle.json` credentials and confirm you’ve accepted the competition rules on Kaggle.
-
-**Q4: Ollama model too large or slow?**
-A: Try lighter models like `llama3:instruct` or `mistral`, or simplify prompts to reduce context length.
+**Q2: Why are Live Logs not showing for RAG and DLP Agents?**
+A: These agents do not generate real-time execution logs in the same way as other agents. The process is running in the background and may take some time (approximately 1 minute) to generate results. Please be patient while the system processes your request.

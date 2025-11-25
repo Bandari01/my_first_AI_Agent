@@ -1,0 +1,116 @@
+[
+  {
+    "title": "Store Sales data column names and structures",
+    "type": "data_schema",
+    "content": "train.csv column names: id, date, store_nbr, family, sales, onpromotion. test.csv column names: id, date, store_nbr, family, onpromotion. stores.csv column names: store_nbr, city, state, type, cluster. oil.csv column names: date, dcoilwtico (note: not oil). holidays_events.csv column names: date, type, locale, locale_name, description, transferred. transactions.csv column names: date, store_nbr, transactions. Training data date range: 2013-01-01 to 2017-08-15, Test data date range: 2017-08-16 to 2017-08-31.",
+    "tags": ["data-structure", "column-names", "store-sales"]
+  },
+  {
+    "title": "Store Sales data merging methods",
+    "type": "technique",
+    "content": "Data merging steps: 1) Merge train/test with stores on store_nbr. 2) Merge with oil on date, using the dcoilwtico column. 3) Merge with transactions on date and store_nbr. 4) Do not merge holiday data directly; instead, create an is_holiday flag. Use holidays_events[holidays_events['transferred']==False]['date'].unique() to get the actual holiday dates.",
+    "tags": ["data-merging", "joins", "store-sales"]
+  },
+  {
+    "title": "Store Sales feature engineering requirements",
+    "type": "technique",
+    "content": "Essential feature engineering: 1) Date features: year, month, day, day_of_week, is_weekend. 2) Categorical variable encoding: Use LabelEncoder for family, city, state, type to ensure consistency between training and test set features. 3) Handle missing values: Forward fill oil prices, fill transactions with 0. 4) Create holiday flag. 5) Do not use pd.get_dummies() as it causes feature inconsistency between training and test sets.",
+    "tags": ["feature-engineering", "encoding", "store-sales"]
+  },
+  {
+    "title": "Store Sales code execution requirements",
+    "type": "implementation",
+    "content": "Generated code must: 1) Include complete error handling and log output. 2) Use try-except blocks around each major step. 3) Print progress and key information for each step. 4) Ensure the final submission.csv file is generated, containing id and sales columns. 5) Verify the submission file has 28512 rows. 6) Ensure predicted values are non-negative. 7) Use appropriate time series splitting methods.",
+    "tags": ["code-requirements", "error-handling", "submission"]
+  },
+  {
+    "title": "Store Sales model selection",
+    "type": "modeling",
+    "content": "Recommended to use RandomForestRegressor or LightGBM, set n_estimators=50 to speed up training. When using train_test_split, set random_state=42 for reproducibility. Use RMSLE as the evaluation metric, ensure predicted values are non-negative.",
+    "tags": ["model-selection", "random-forest", "evaluation"]
+  },
+  {
+    "title": "Key points for date type handling",
+    "type": "critical",
+    "content": "Before merging data, you must convert the date column in all dataframes to datetime type: train['date']=pd.to_datetime(train['date']), test['date']=pd.to_datetime(test['date']), oil['date']=pd.to_datetime(oil['date']), holidays_events['date']=pd.to_datetime(holidays_events['date']), transactions['date']=pd.to_datetime(transactions['date']). This is a key step to avoid merge errors.",
+    "tags": ["datetime", "merging", "critical"]
+  },
+  {
+    "title": "All date columns must be converted",
+    "type": "critical",
+    "content": "You must convert the date column in all dataframes to datetime type, including the transactions dataframe. The code must include: train['date']=pd.to_datetime(train['date']), test['date']=pd.to_datetime(test['date']), oil['date']=pd.to_datetime(oil['date']), holidays_events['date']=pd.to_datetime(holidays_events['date']), transactions['date']=pd.to_datetime(transactions['date']). Omitting any one will cause merge errors.",
+    "tags": ["datetime", "merging", "critical", "transactions"]
+  },
+  {
+    "title": "Categorical variable encoding method",
+    "type": "technique",
+    "content": "You must use LabelEncoder instead of pd.get_dummies() to encode categorical variables. Using LabelEncoder ensures feature consistency between the training and test sets. Columns that need encoding include: family, city, state, type. Before encoding, you need to combine all possible values from the training and test sets.",
+    "tags": ["encoding", "categorical", "labelencoder"]
+  },
+  {
+    "title": "Absolutely do not use pd.get_dummies",
+    "type": "critical",
+    "content": "In the Store Sales competition, absolutely do not use pd.get_dummies() for encoding, as it causes an explosive growth in the number of features (hundreds or even thousands), making model training extremely slow or even running out of memory. You must use LabelEncoder to encode each categorical variable separately.",
+    "tags": ["encoding", "critical", "performance"]
+  },
+  {
+    "title": "Model training optimization",
+    "type": "technique",
+    "content": "To speed up training, set RandomForestRegressor(n_estimators=50, max_depth=15, min_samples_split=10, n_jobs=-1). Reducing the number and depth of trees can significantly improve training speed while maintaining reasonable performance.",
+    "tags": ["model", "training", "performance"]
+  },
+  {
+    "title": "Mandatory requirements for categorical variable encoding",
+    "type": "critical",
+    "content": "Before training the model, you must encode all categorical variables into numeric types. Especially the 'family' column contains string values (like 'AUTOMOTIVE', 'GROCERY I', etc.) and cannot be directly used for model training. You must use LabelEncoder or similar methods for encoding. The code must include: from sklearn.preprocessing import LabelEncoder; le_family = LabelEncoder(); train['family_encoded'] = le_family.fit_transform(train['family']); test['family_encoded'] = le_family.transform(test['family']). Then use 'family_encoded' in the feature list instead of 'family'.",
+    "tags": ["encoding", "categorical", "critical", "family"]
+  },
+  {
+    "title": "Model training feature requirements",
+    "type": "implementation",
+    "content": "All features input to the model must be numeric types. Categorical variables like 'family', 'city', 'state', 'type' must be encoded first. The feature list can only include numeric columns and encoded categorical variables. You must never pass strings directly to the model.",
+    "tags": ["features", "model-training", "numeric-only"]
+  },
+  {
+    "title": "Complete feature processing workflow",
+    "type": "workflow",
+    "content": "Data preprocessing must include the following steps: 1) Load data, 2) Convert date formats, 3) Merge data tables, 4) Create time features, 5) Handle missing values, 6) Encode all categorical variables, 7) Select numeric features for training. Missing the encoding step will cause string to float conversion errors.",
+    "tags": ["workflow", "preprocessing", "encoding"]
+  },
+  {
+    "title": "Correct method for processing holiday data",
+    "type": "critical",
+    "content": "The holidays_events.csv file does not have a 'holiday' column. The correct column names are: 'date', 'type', 'locale', 'locale_name', 'description', 'transferred'. The correct method to create a holiday flag is: 1) Filter non-transferred holidays: holidays_non_transferred = holidays_events[holidays_events['transferred'] == False], 2) Get holiday dates: holiday_dates = holidays_non_transferred['date'].unique(), 3) Create flag: train['is_holiday'] = train['date'].isin(holiday_dates).astype(int), 4) Process the test set similarly. Absolutely do not try to access a non-existent 'holiday' column.",
+    "tags": ["holidays", "data-structure", "critical", "column-names"]
+  },
+  {
+    "title": "Data column name accuracy requirements",
+    "type": "implementation",
+    "content": "All column names used in the code must exactly match the actual column names in the data files. You cannot assume column names or use non-existent column names. You must check column names against the actual data: train.csv has ['id','date','store_nbr','family','sales','onpromotion'], test.csv has ['id','date','store_nbr','family','onpromotion'], stores.csv has ['store_nbr','city','state','type','cluster'], oil.csv has ['date','dcoilwtico'], holidays_events.csv has ['date','type','locale','locale_name','description','transferred'], transactions.csv has ['date','store_nbr','transactions'].",
+    "tags": ["column-names", "data-validation", "accuracy"]
+  },
+  {
+    "title": "Pattern for creating holiday flags",
+    "type": "pattern",
+    "content": "Standard pattern for creating holiday flags: 1) Filter non-transferred holidays (transferred==False), 2) Extract unique holiday dates, 3) Use the isin() method to create boolean flags, 4) Convert to integer type. Code example: holiday_dates = holidays_events[holidays_events['transferred']==False]['date'].unique(); train['is_holiday'] = train['date'].isin(holiday_dates).astype(int); test['is_holiday'] = test['date'].isin(holiday_dates).astype(int).",
+    "tags": ["holidays", "pattern", "feature-engineering"]
+  },
+  {
+    "title": "Enforcement requirements for categorical variable encoding",
+    "type": "critical",
+    "content": "At any stage of model training, you must never directly pass string-type categorical variables to the model. You must encode all categorical variables before using the model. Especially the 'family' column must be encoded using LabelEncoder. The code must include: from sklearn.preprocessing import LabelEncoder; le_family = LabelEncoder(); train['family_encoded'] = le_family.fit_transform(train['family']); test['family_encoded'] = le_family.transform(test['family']). Then use 'family_encoded' in the feature list instead of 'family'. This encoding step must be completed before model training.",
+    "tags": ["encoding", "categorical", "critical", "model-training"]
+  },
+  {
+    "title": "Complete categorical variable encoding workflow",
+    "type": "workflow",
+    "content": "Complete workflow for categorical variable encoding: 1) Import LabelEncoder, 2) Create an encoder for each categorical variable, 3) fit_transform on the training set, 4) transform on the test set, 5) Use the encoded column names in the feature list. Columns that must be encoded include: 'family', 'city', 'state', 'type'. Example code: le = LabelEncoder(); train['family_encoded'] = le.fit_transform(train['family']); test['family_encoded'] = le.transform(test['family']); features = ['store_nbr', 'family_encoded', ...]",
+    "tags": ["encoding", "workflow", "preprocessing"]
+  },
+  {
+    "title": "Data validation before model training",
+    "type": "validation",
+    "content": "Before calling model.fit() or model.predict(), you must verify that all features are numeric types. You can use print(X.dtypes) to check feature data types. If you see object or category types, it means there are categorical variables that have not been encoded. You must ensure all features are int or float types before model training.",
+    "tags": ["validation", "data-types", "model-training"]
+  }
+]

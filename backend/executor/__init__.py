@@ -1,7 +1,7 @@
 """
-代码执行引擎模块
+Code Execution Engine Module
 
-提供安全的Python代码执行环境
+Provides a secure Python code execution environment
 """
 from .code_executor import GeneratedCodeExecutor, ExecutionResult
 

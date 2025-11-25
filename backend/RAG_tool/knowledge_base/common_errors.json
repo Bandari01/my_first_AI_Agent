@@ -1,0 +1,50 @@
+[
+  {
+    "title": "Data Leakage Prevention",
+    "type": "warning",
+    "content": "Never use future information to predict past values. Ensure time-based splitting preserves causality. Be careful with lag features and rolling statistics, which may contain future information if implemented incorrectly.",
+    "tags": ["data-leakage", "validation", "time-series"]
+  },
+  {
+    "title": "Memory Management for Large Datasets",
+    "type": "best_practice",
+    "content": "For large datasets, use efficient data types (use category for strings, use float32 instead of float64 when possible). Process data in chunks if needed. Use df.info(memory_usage='deep') to monitor memory usage.",
+    "tags": ["memory", "performance", "large-data"]
+  },
+  {
+    "title": "Handling Categorical Variables",
+    "type": "technique",
+    "content": "Encode categorical variables appropriately: Use LabelEncoder for tree models, OneHotEncoder for linear models. For high-cardinality categories, consider target encoding or frequency encoding. Always handle unseen categories in test data.",
+    "tags": ["categorical", "encoding", "preprocessing"]
+  },
+  {
+    "title": "Feature Inconsistency Error",
+    "type": "warning",
+    "content": "Using pd.get_dummies() causes feature inconsistency between training and test sets, making prediction impossible. Must use LabelEncoder to ensure feature consistency. In Store Sales competition, family, city, state, type all need encoding.",
+    "tags": ["feature-engineering", "encoding", "common-errors"]
+  },
+  {
+    "title": "Data Merging Errors",
+    "type": "warning",
+    "content": "Directly merging holidays_events causes explosive growth in row count because one day may have multiple holiday events. Should create is_holiday flag instead. The column name in oil.csv is dcoilwtico not oil.",
+    "tags": ["data-merging", "joins", "common-errors"]
+  },
+  {
+    "title": "Negative Value Prediction Error",
+    "type": "warning",
+    "content": "RMSLE metric requires non-negative predicted values. Must use np.maximum(0, predictions) to ensure non-negative predictions. Otherwise, it will cause calculation errors.",
+    "tags": ["predictions", "rmsle", "common-errors"]
+  },
+  {
+    "title": "Column Name Not Found Error",
+    "type": "error",
+    "content": "Error message 'not in index' indicates the code is trying to access a column that doesn't exist in the dataframe. This is usually because of using wrong column names or assuming non-existent columns. Solution is to check the exact column names in data files and ensure column names used in code exactly match actual column names.",
+    "tags": ["error", "column-names", "data-structure"]
+  },
+  {
+    "title": "String to Float Conversion Error Solution",
+    "type": "solution",
+    "content": "When encountering 'could not convert string to float' error, immediately check: 1) Whether LabelEncoder is imported, 2) Whether all categorical variables are encoded, 3) Whether encoded column names are used in feature list instead of original column names. Solution is to ensure all categorical variable encoding is completed before model training.",
+    "tags": ["error", "solution", "encoding"]
+  }
+]

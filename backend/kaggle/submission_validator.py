@@ -1,7 +1,7 @@
 """
-提交文件验证器
+Submission File Validator
 
-验证生成的submission.csv是否符合Kaggle要求
+Validates if the generated submission.csv meets Kaggle requirements
 """
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -14,21 +14,21 @@ logger = get_logger(__name__)
 
 class SubmissionValidator:
     """
-    提交文件验证器
+    Submission File Validator
     
-    功能：
-    1. 验证submission.csv格式
-    2. 检查列名和列数
-    3. 验证ID完整性
-    4. 检查预测值范围
+    Features:
+    1. Validate submission.csv format
+    2. Check column names and count
+    3. Validate ID integrity
+    4. Check prediction value range
     """
     
     def __init__(self, sample_submission_path: Optional[Path] = None):
         """
-        初始化验证器
+        Initialize Validator
         
         Args:
-            sample_submission_path: 样例提交文件路径
+            sample_submission_path: Path to sample submission file
         """
         self.sample_submission_path = sample_submission_path
         self.sample_df: Optional[pd.DataFrame] = None
@@ -36,91 +36,91 @@ class SubmissionValidator:
         if sample_submission_path and sample_submission_path.exists():
             try:
                 self.sample_df = pd.read_csv(sample_submission_path)
-                logger.info(f"加载样例提交文件: {sample_submission_path}")
-                logger.info(f"样例形状: {self.sample_df.shape}")
-                logger.info(f"样例列: {list(self.sample_df.columns)}")
+                logger.info(f"Loaded sample submission file: {sample_submission_path}")
+                logger.info(f"Sample shape: {self.sample_df.shape}")
+                logger.info(f"Sample columns: {list(self.sample_df.columns)}")
             except Exception as e:
-                logger.warning(f"加载样例提交文件失败: {e}")
+                logger.warning(f"Failed to load sample submission file: {e}")
     
     def validate(self, submission_path: Path) -> Tuple[bool, List[str]]:
         """
-        验证提交文件
+        Validate submission file
         
         Args:
-            submission_path: 提交文件路径
+            submission_path: Path to submission file
             
         Returns:
-            (是否有效, 错误信息列表)
+            (is_valid, error_list)
         """
         errors = []
         
-        # 1. 检查文件是否存在
+        # 1. Check if file exists
         if not submission_path.exists():
-            errors.append(f"提交文件不存在: {submission_path}")
+            errors.append(f"Submission file does not exist: {submission_path}")
             return False, errors
         
         try:
-            # 2. 尝试读取文件
+            # 2. Try to read file
             submission_df = pd.read_csv(submission_path)
-            logger.info(f"提交文件形状: {submission_df.shape}")
-            logger.info(f"提交文件列: {list(submission_df.columns)}")
+            logger.info(f"Submission file shape: {submission_df.shape}")
+            logger.info(f"Submission file columns: {list(submission_df.columns)}")
             
         except Exception as e:
-            errors.append(f"无法读取提交文件: {e}")
+            errors.append(f"Cannot read submission file: {e}")
             return False, errors
         
-        # 3. 如果有样例文件，进行对比验证
+        # 3. If sample file exists, validate against it
         if self.sample_df is not None:
             errors.extend(self._validate_against_sample(submission_df))
         else:
-            # 4. 基本验证（没有样例文件时）
+            # 4. Basic validation (when no sample file)
             errors.extend(self._basic_validation(submission_df))
         
-        # 5. 检查是否有缺失值
+        # 5. Check for missing values
         if submission_df.isnull().any().any():
             null_cols = submission_df.columns[submission_df.isnull().any()].tolist()
-            errors.append(f"存在缺失值的列: {null_cols}")
+            errors.append(f"Columns with missing values: {null_cols}")
         
-        # 6. 检查是否有无穷值
+        # 6. Check for infinite values
         numeric_cols = submission_df.select_dtypes(include=['float64', 'int64']).columns
         for col in numeric_cols:
             if (submission_df[col] == float('inf')).any() or (submission_df[col] == float('-inf')).any():
-                errors.append(f"列 '{col}' 包含无穷值")
+                errors.append(f"Column '{col}' contains infinite values")
         
         is_valid = len(errors) == 0
         
         if is_valid:
-            logger.info("✓ 提交文件验证通过")
+            logger.info("✓ Submission file validation passed")
         else:
-            logger.warning(f"✗ 提交文件验证失败，发现 {len(errors)} 个问题")
+            logger.warning(f"✗ Submission file validation failed, found {len(errors)} issues")
             for error in errors:
                 logger.warning(f"  - {error}")
         
         return is_valid, errors
     
     def _validate_against_sample(self, submission_df: pd.DataFrame) -> List[str]:
-        """对比样例文件进行验证"""
+        """Validate against sample file"""
         errors = []
         
-        # 检查列名
+        # Check column names
         expected_cols = list(self.sample_df.columns)
         actual_cols = list(submission_df.columns)
         
         if expected_cols != actual_cols:
             errors.append(
-                f"列名不匹配。期望: {expected_cols}, 实际: {actual_cols}"
+                f"Column names mismatch. Expected: {expected_cols}, Actual: {actual_cols}"
             )
         
-        # 检查行数
+        # Check row count
         expected_rows = len(self.sample_df)
         actual_rows = len(submission_df)
         
         if expected_rows != actual_rows:
             errors.append(
-                f"行数不匹配。期望: {expected_rows}, 实际: {actual_rows}"
+                f"Row count mismatch. Expected: {expected_rows}, Actual: {actual_rows}"
             )
         
-        # 检查ID列（通常第一列是ID）
+        # Check ID column (usually first column is ID)
         if len(expected_cols) > 0 and len(actual_cols) > 0:
             id_col = expected_cols[0]
             
@@ -132,70 +132,70 @@ class SubmissionValidator:
                 extra_ids = actual_ids - expected_ids
                 
                 if missing_ids:
-                    errors.append(f"缺少 {len(missing_ids)} 个ID")
+                    errors.append(f"Missing {len(missing_ids)} IDs")
                 if extra_ids:
-                    errors.append(f"多出 {len(extra_ids)} 个ID")
+                    errors.append(f"Extra {len(extra_ids)} IDs")
         
-        # 检查数据类型
+        # Check data types
         for col in expected_cols:
             if col in actual_cols:
                 expected_dtype = self.sample_df[col].dtype
                 actual_dtype = submission_df[col].dtype
                 
-                # 允许int/float的兼容
+                # Allow int/float compatibility
                 if not self._dtypes_compatible(expected_dtype, actual_dtype):
                     errors.append(
-                        f"列 '{col}' 数据类型不匹配。期望: {expected_dtype}, 实际: {actual_dtype}"
+                        f"Column '{col}' data type mismatch. Expected: {expected_dtype}, Actual: {actual_dtype}"
                     )
         
         return errors
     
     def _basic_validation(self, submission_df: pd.DataFrame) -> List[str]:
-        """基本验证（无样例文件时）"""
+        """Basic validation (when no sample file)"""
         errors = []
         
-        # 检查是否为空
+        # Check if empty
         if len(submission_df) == 0:
-            errors.append("提交文件为空")
+            errors.append("Submission file is empty")
         
-        # 检查列数
+        # Check column count
         if len(submission_df.columns) < 2:
-            errors.append(f"列数过少: {len(submission_df.columns)}，通常至少需要ID列和预测列")
+            errors.append(f"Too few columns: {len(submission_df.columns)}, usually need at least ID column and prediction column")
         
-        # 检查是否有ID列（常见的ID列名）
+        # Check if ID column exists (common ID column names)
         id_col_names = ['id', 'Id', 'ID', 'index']
         has_id_col = any(col in submission_df.columns for col in id_col_names)
         
         if not has_id_col:
-            logger.warning("未找到明确的ID列，请确认第一列是否为ID")
+            logger.warning("No explicit ID column found, please confirm if the first column is ID")
         
         return errors
     
     @staticmethod
     def _dtypes_compatible(dtype1, dtype2) -> bool:
-        """检查两个数据类型是否兼容"""
-        # 数值类型之间兼容
+        """Check if two data types are compatible"""
+        # Numeric types are compatible
         numeric_types = ['int64', 'int32', 'float64', 'float32']
         if str(dtype1) in numeric_types and str(dtype2) in numeric_types:
             return True
         
-        # 对象类型和字符串类型兼容
+        # Object and string types are compatible
         string_types = ['object', 'string']
         if str(dtype1) in string_types and str(dtype2) in string_types:
             return True
         
-        # 完全相同
+        # Exactly same
         return dtype1 == dtype2
     
     def get_submission_summary(self, submission_path: Path) -> Dict:
         """
-        获取提交文件摘要
+        Get submission file summary
         
         Args:
-            submission_path: 提交文件路径
+            submission_path: Path to submission file
             
         Returns:
-            摘要信息字典
+            Summary info dictionary
         """
         try:
             df = pd.read_csv(submission_path)
@@ -205,11 +205,11 @@ class SubmissionValidator:
                 "shape": df.shape,
                 "columns": list(df.columns),
                 "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
-                "has_null": df.isnull().any().any(),
+                "has_null": bool(df.isnull().any().any()),
                 "null_counts": df.isnull().sum().to_dict(),
             }
             
-            # 数值列的统计
+            # Numeric column stats
             numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
             if len(numeric_cols) > 0:
                 summary["numeric_stats"] = {}
@@ -224,7 +224,7 @@ class SubmissionValidator:
             return summary
             
         except Exception as e:
-            logger.error(f"获取提交文件摘要失败: {e}")
+            logger.error(f"Failed to get submission file summary: {e}")
             return {"error": str(e)}
     
     def fix_common_issues(
@@ -233,14 +233,14 @@ class SubmissionValidator:
         output_path: Optional[Path] = None
     ) -> Tuple[bool, Path]:
         """
-        尝试修复常见问题
+        Try to fix common issues
         
         Args:
-            submission_path: 提交文件路径
-            output_path: 输出路径（默认覆盖原文件）
+            submission_path: Path to submission file
+            output_path: Output path (default overwrite original file)
             
         Returns:
-            (是否成功, 输出文件路径)
+            (is_success, output_file_path)
         """
         if output_path is None:
             output_path = submission_path
@@ -249,16 +249,16 @@ class SubmissionValidator:
             df = pd.read_csv(submission_path)
             modified = False
             
-            # 1. 填充缺失值（用0或中位数）
+            # 1. Fill missing values (with 0 or median)
             if df.isnull().any().any():
-                logger.info("修复: 填充缺失值")
+                logger.info("Fixing: Filling missing values")
                 numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
                 for col in numeric_cols:
                     if df[col].isnull().any():
                         median_val = df[col].median()
                         df[col].fillna(median_val, inplace=True)
                 
-                # 对象类型用空字符串填充
+                # Object types fill with empty string
                 object_cols = df.select_dtypes(include=['object']).columns
                 for col in object_cols:
                     if df[col].isnull().any():
@@ -266,38 +266,38 @@ class SubmissionValidator:
                 
                 modified = True
             
-            # 2. 替换无穷值
+            # 2. Replace infinite values
             numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
             for col in numeric_cols:
                 if (df[col] == float('inf')).any():
-                    logger.info(f"修复: 替换列 '{col}' 中的正无穷值")
+                    logger.info(f"Fixing: Replacing positive infinity in column '{col}'")
                     df[col].replace(float('inf'), df[col][df[col] != float('inf')].max(), inplace=True)
                     modified = True
                 
                 if (df[col] == float('-inf')).any():
-                    logger.info(f"修复: 替换列 '{col}' 中的负无穷值")
+                    logger.info(f"Fixing: Replacing negative infinity in column '{col}'")
                     df[col].replace(float('-inf'), df[col][df[col] != float('-inf')].min(), inplace=True)
                     modified = True
             
-            # 3. 如果有样例文件，对齐列顺序
+            # 3. If sample file exists, align column order
             if self.sample_df is not None:
                 expected_cols = list(self.sample_df.columns)
                 if list(df.columns) != expected_cols:
-                    logger.info("修复: 对齐列顺序")
-                    # 只保留期望的列，并按期望的顺序
+                    logger.info("Fixing: Aligning column order")
+                    # Keep only expected columns and in expected order
                     df = df[[col for col in expected_cols if col in df.columns]]
                     modified = True
             
-            # 保存修复后的文件
+            # Save fixed file
             if modified:
                 df.to_csv(output_path, index=False)
-                logger.info(f"✓ 修复后的文件已保存: {output_path}")
+                logger.info(f"✓ Fixed file saved: {output_path}")
                 return True, output_path
             else:
-                logger.info("无需修复")
+                logger.info("No fix needed")
                 return True, submission_path
             
         except Exception as e:
-            logger.error(f"修复失败: {e}")
+            logger.error(f"Fix failed: {e}")
             return False, submission_path
 

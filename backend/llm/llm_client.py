@@ -1,7 +1,7 @@
 """
-LLM客户端
+LLM Client
 
-统一的LLM调用接口，支持OpenAI和Ollama
+Unified LLM calling interface, supporting OpenAI and Ollama
 """
 import os
 from dataclasses import dataclass
@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 
 @dataclass
 class LLMResponse:
-    """LLM响应"""
+    """LLM Response"""
     content: str
     model: str
     tokens_used: int = 0
@@ -27,9 +27,9 @@ class LLMResponse:
 
 class LLMClient:
     """
-    LLM客户端
+    LLM Client
     
-    支持OpenAI和Ollama，提供统一接口
+    Supports OpenAI and Ollama, provides a unified interface
     """
     
     def __init__(
@@ -42,15 +42,15 @@ class LLMClient:
         max_tokens: int = 4096
     ):
         """
-        初始化LLM客户端
+        Initialize LLM client
         
         Args:
-            provider: 提供商 ("openai" 或 "ollama")
-            model: 模型名称
-            api_key: API密钥
-            base_url: API基础URL
-            temperature: 温度参数
-            max_tokens: 最大token数
+            provider: Provider ("openai" or "ollama")
+            model: Model name
+            api_key: API key
+            base_url: API base URL
+            temperature: Temperature parameter
+            max_tokens: Maximum number of tokens
         """
         self.provider = provider
         self.temperature = temperature
@@ -62,26 +62,26 @@ class LLMClient:
             self.base_url = base_url or os.getenv("OPENAI_BASE_URL")
             
             if not self.api_key:
-                raise ValueError("OpenAI API密钥未设置")
+                raise ValueError("OpenAI API key not set")
             
             self.client = OpenAI(
                 api_key=self.api_key,
                 base_url=self.base_url if self.base_url else None
             )
-            logger.info(f"初始化OpenAI客户端: model={self.model}")
-            
+            logger.info(f"Initialized OpenAI client: model={self.model}")
+
         elif provider == "ollama":
             self.model = model or os.getenv("OLLAMA_MODEL", "llama3")
             self.base_url = base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
             
-            # Ollama使用OpenAI兼容的API
+            # Ollama uses OpenAI-compatible API
             self.client = OpenAI(
-                api_key="ollama",  # Ollama不需要真实的key
+                api_key="ollama",  # Ollama doesn't need a real key
                 base_url=f"{self.base_url}/v1"
             )
-            logger.info(f"初始化Ollama客户端: model={self.model}")
+            logger.info(f"Initialized Ollama client: model={self.model}")
         else:
-            raise ValueError(f"不支持的提供商: {provider}")
+            raise ValueError(f"Unsupported provider: {provider}")
     
     def chat(
         self,
@@ -90,15 +90,15 @@ class LLMClient:
         max_tokens: Optional[int] = None
     ) -> LLMResponse:
         """
-        发送聊天请求
+        Send chat request
         
         Args:
-            messages: 消息列表 [{"role": "user", "content": "..."}]
-            temperature: 温度参数（覆盖默认值）
-            max_tokens: 最大token数（覆盖默认值）
+            messages: Message list [{"role": "user", "content": "..."}]
+            temperature: Temperature parameter (overrides default)
+            max_tokens: Maximum number of tokens (overrides default)
             
         Returns:
-            LLM响应
+            LLM response
         """
         try:
             response = self.client.chat.completions.create(
@@ -112,7 +112,7 @@ class LLMClient:
             tokens_used = response.usage.total_tokens if response.usage else 0
             finish_reason = response.choices[0].finish_reason
             
-            logger.info(f"LLM调用成功: tokens={tokens_used}, reason={finish_reason}")
+            logger.info(f"LLM call successful: tokens={tokens_used}, reason={finish_reason}")
             
             return LLMResponse(
                 content=content,
@@ -122,7 +122,7 @@ class LLMClient:
             )
             
         except Exception as e:
-            logger.error(f"LLM调用失败: {e}")
+            logger.error(f"LLM call failed: {e}")
             raise
     
     def generate(
@@ -133,16 +133,16 @@ class LLMClient:
         max_tokens: Optional[int] = None
     ) -> LLMResponse:
         """
-        生成文本（简化接口）
+        Generate text (simplified interface)
         
         Args:
-            prompt: 用户提示
-            system_prompt: 系统提示
-            temperature: 温度参数
-            max_tokens: 最大token数
+            prompt: User prompt
+            system_prompt: System prompt
+            temperature: Temperature parameter
+            max_tokens: Maximum number of tokens
             
         Returns:
-            LLM响应
+            LLM response
         """
         messages = []
         

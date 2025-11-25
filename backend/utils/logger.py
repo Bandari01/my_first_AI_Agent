@@ -1,19 +1,19 @@
 """
-日志工具
+Logging Utility
 """
 import sys
 from pathlib import Path
 from loguru import logger
 from backend.config import LOG_LEVEL, PROJECT_ROOT
 
-# 日志目录
+# Log directory
 LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
-# 移除默认处理器
+# Remove default handler
 logger.remove()
 
-# 添加控制台输出
+# Add console output
 logger.add(
     sys.stdout,
     level=LOG_LEVEL,
@@ -21,18 +21,18 @@ logger.add(
     colorize=True
 )
 
-# 添加文件输出
+# Add file output
 logger.add(
     LOG_DIR / "app_{time:YYYY-MM-DD}.log",
     level="DEBUG",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
-    rotation="00:00",  # 每天轮换
-    retention="30 days",  # 保留30天
-    compression="zip"  # 压缩旧日志
+    rotation="00:00",  # Rotate daily
+    retention="30 days",  # Keep 30 days
+    compression="zip"  # Compress old logs
 )
 
 def get_logger(name: str):
-    """获取命名logger"""
+    """Get named logger"""
     return logger.bind(name=name)
 
 __all__ = ["logger", "get_logger"]

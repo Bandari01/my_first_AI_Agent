@@ -1,48 +1,48 @@
 """
-全局配置管理
+Global Configuration Management
 """
 import os
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
 
-# 加载环境变量
+# Load environment variables
 load_dotenv()
 
-# 项目根目录
+# Project root directory
 PROJECT_ROOT = Path(__file__).parent.parent
 
-# 数据目录
+# Data directory
 DATA_DIR = PROJECT_ROOT / "data"
 COMPETITIONS_DIR = DATA_DIR / "competitions"
 GENERATED_CODE_DIR = DATA_DIR / "generated_code"
 
-# 创建必要的目录
+# Create necessary directories
 for directory in [DATA_DIR, COMPETITIONS_DIR, GENERATED_CODE_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
 
-# Kaggle配置
+# Kaggle configuration
 KAGGLE_USERNAME = os.getenv("KAGGLE_USERNAME", "")
 KAGGLE_KEY = os.getenv("KAGGLE_KEY", "")
 
-# Ollama配置
+# Ollama configuration
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
 
-# 执行配置
-MAX_EXECUTION_TIME = int(os.getenv("MAX_EXECUTION_TIME", "600"))  # 秒（增加到10分钟）
+# Execution configuration
+MAX_EXECUTION_TIME = int(os.getenv("MAX_EXECUTION_TIME", "600"))  # seconds (increased to 10 minutes)
 MAX_MEMORY_MB = int(os.getenv("MAX_MEMORY_MB", "2048"))
 ENABLE_DOCKER_SANDBOX = os.getenv("ENABLE_DOCKER_SANDBOX", "false").lower() == "true"
 
-# 日志配置
+# Logging configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-# LLM配置
+# LLM configuration
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_MAX_TOKENS = 4096
 
 class Config:
-    """配置类"""
+    """Configuration class"""
     
     def __init__(self):
         self.project_root = PROJECT_ROOT
@@ -66,11 +66,11 @@ class Config:
         self.default_max_tokens = DEFAULT_MAX_TOKENS
     
     def validate(self) -> tuple[bool, Optional[str]]:
-        """验证配置是否完整"""
+        """Validate if configuration is complete"""
         if not self.kaggle_username or not self.kaggle_key:
-            return False, "Kaggle API凭证未配置"
+            return False, "Kaggle API credentials not configured"
         
         return True, None
 
-# 全局配置实例
+# Global configuration instance
 config = Config()

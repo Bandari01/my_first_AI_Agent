@@ -1,7 +1,7 @@
 """
-ReAct Agent实现（时间序列优化版）
+ReAct Agent Implementation (Time Series Optimized Version)
 
-本文件已整合原 `base_agent.py` 的核心功能，使 `ReactAgent` 可以独立运行。
+This file integrates the core functionality of the original `base_agent.py`, enabling `ReactAgent` to run independently.
 """
 
 from abc import ABC, abstractmethod
@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 
 @dataclass
 class ReactResult:
-    """简化的 React 运行结果对象"""
+    """Simplified React execution result object"""
     success: bool
     generated_code: Optional[str] = None
     submission_path: Optional[str] = None
@@ -47,11 +47,12 @@ class ReactAgent:
         temperature: float = 0.3,
         max_tokens: int = 4000,
         timeout: int = 300,
+        max_fix_attempts: int = 1,
         competition_name: str = "",
         output_dir: Optional[Path] = None,
     ) -> None:
         self.llm = LLMClient(provider="openai", model=llm_model, temperature=temperature, max_tokens=max_tokens)
-        self.executor = GeneratedCodeExecutor(timeout=timeout)
+        self.executor = GeneratedCodeExecutor(timeout=timeout, max_fix_attempts=max_fix_attempts)
         self.competition_name = competition_name
         # prepare output dir
         if output_dir is None:
@@ -65,7 +66,7 @@ class ReactAgent:
         code_file = self.output_dir / "generated_solution.py"
         with open(code_file, 'w', encoding='utf-8') as f:
             f.write(code)
-        self._logger.info(f"代码已保存: {code_file}")
+        self._logger.info(f"Code saved: {code_file}")
         return code_file
 
     async def run(self, problem_description: str, data_info: Dict[str, Any]) -> ReactResult:
@@ -76,7 +77,7 @@ class ReactAgent:
         # Build prompt
         file_summary = "\n".join([f"- {k}: {v.get('columns', [])}" for k, v in data_info.get("all_files_info", {}).items()])
         system_prompt = (
-            "You are a Kaggle time-series advisor. Produce a complete, runnable Python script that performs the full end-to-end pipeline for a Kaggle-style time-series forecasting problem.\n"
+            "You are a Kaggle time-series advisor. Produce a complete, runnable Python script that performs the full end-to-end pipeline for a Kaggle-style problem.\n"
             "Return only the Python source code."
         )
         prompt = f"Task description:\n{problem_description}\n\nDetected files and basic schema:\n{file_summary}\n"

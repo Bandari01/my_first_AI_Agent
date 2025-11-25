@@ -1,9 +1,9 @@
 """
-RAG tool package moved under backend for modularization.
+RAG Tool Package
 """
 
-__all__ = [
-    'config',
-    'knowledge_retriever',
-    'prompt_templates',
-]
+from .rag_agent import RAGAgent, RAGResult
+from .knowledge_retriever import KnowledgeRetriever
+from .config import RAGConfig
+
+__all__ = ['RAGAgent', 'RAGResult', 'KnowledgeRetriever', 'RAGConfig']

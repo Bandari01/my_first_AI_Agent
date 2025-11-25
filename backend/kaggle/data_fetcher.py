@@ -1,8 +1,7 @@
-
 """
-Kaggle数据获取器
+Kaggle Data Fetcher
 
-负责从Kaggle下载竞赛数据、解析问题描述、获取评估指标等
+Responsible for downloading competition data from Kaggle, parsing problem descriptions, getting evaluation metrics, etc.
 """
 import os
 import re
@@ -23,41 +22,41 @@ logger = get_logger(__name__)
 @dataclass
 class CompetitionInfo:
     """
-    竞赛信息类
+    Competition Info Class
     
-    包含从Kaggle获取的所有竞赛相关信息
+    Contains all competition related information fetched from Kaggle
     """
-    # 基本信息
-    competition_id: str  # 竞赛ID（从URL提取）
-    competition_name: str  # 竞赛名称
-    competition_url: str  # 竞赛URL
+    # Basic Info
+    competition_id: str  # Competition ID (extracted from URL)
+    competition_name: str  # Competition Name
+    competition_url: str  # Competition URL
     
-    # 问题信息
+    # Problem Info
     title: str = ""
     description: str = ""
     evaluation_metric: str = ""
     problem_type: str = ""  # classification, regression, time_series, etc.
     
-    # 数据信息
+    # Data Info
     data_path: Optional[Path] = None
     train_files: List[str] = field(default_factory=list)
     test_files: List[str] = field(default_factory=list)
     sample_submission_file: Optional[str] = None
     
-    # 数据统计
+    # Data Statistics
     train_shape: Optional[tuple] = None
     test_shape: Optional[tuple] = None
     columns: List[str] = field(default_factory=list)
     column_types: Dict[str, str] = field(default_factory=dict)
     
-    # 额外信息
+    # Extra Info
     deadline: Optional[str] = None
     reward: Optional[str] = None
     tags: List[str] = field(default_factory=list)
-    extra_info: Dict[str, Any] = field(default_factory=dict)  # 存储所有文件的详细信息
+    extra_info: Dict[str, Any] = field(default_factory=dict)  # Store detailed info of all files
     
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
+        """Convert to dictionary"""
         return {
             "competition_id": self.competition_id,
             "competition_name": self.competition_name,
@@ -81,55 +80,55 @@ class CompetitionInfo:
         }
     
     def save(self, path: Path):
-        """保存竞赛信息到文件"""
+        """Save competition info to file"""
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
 
 
 class KaggleDataFetcher:
     """
-    Kaggle数据获取器
+    Kaggle Data Fetcher
     
-    功能：
-    1. 从Kaggle URL提取竞赛ID
-    2. 下载竞赛数据
-    3. 解析竞赛描述和规则
-    4. 分析数据集结构
-    5. 识别训练/测试文件
+    Features:
+    1. Extract competition ID from Kaggle URL
+    2. Download competition data
+    3. Parse competition description and rules
+    4. Analyze dataset structure
+    5. Identify train/test files
     """
     
     def __init__(self):
-        """初始化Kaggle API"""
+        """Initialize Kaggle API"""
         self.api = KaggleApi()
         try:
             self.api.authenticate()
-            logger.info("Kaggle API认证成功")
+            logger.info("Kaggle API authentication successful")
         except Exception as e:
-            logger.error(f"Kaggle API认证失败: {e}")
-            logger.info("请确保已配置 ~/.kaggle/kaggle.json 或环境变量 KAGGLE_USERNAME 和 KAGGLE_KEY")
+            logger.error(f"Kaggle API authentication failed: {e}")
+            logger.info("Please ensure ~/.kaggle/kaggle.json is configured or environment variables KAGGLE_USERNAME and KAGGLE_KEY are set")
             raise
     
     @staticmethod
     def extract_competition_id(url: str) -> str:
         """
-        从Kaggle URL提取竞赛ID
+        Extract competition ID from Kaggle URL
         
-        支持的URL格式：
+        Supported URL formats:
         - https://www.kaggle.com/competitions/store-sales-time-series-forecasting
         - https://www.kaggle.com/c/store-sales-time-series-forecasting
         - store-sales-time-series-forecasting
         
         Args:
-            url: Kaggle竞赛URL或ID
+            url: Kaggle competition URL or ID
             
         Returns:
-            竞赛ID
+            Competition ID
         """
-        # 如果已经是ID格式
+        # If it is already an ID format
         if not url.startswith("http"):
             return url
         
-        # 提取ID
+        # Extract ID
         patterns = [
             r'kaggle\.com/competitions/([^/\?]+)',
             r'kaggle\.com/c/([^/\?]+)',
@@ -140,26 +139,26 @@ class KaggleDataFetcher:
             if match:
                 return match.group(1)
         
-        raise ValueError(f"无法从URL提取竞赛ID: {url}")
+        raise ValueError(f"Cannot extract competition ID from URL: {url}")
     
     def fetch_competition_info(self, competition_url: str) -> CompetitionInfo:
         """
-        获取竞赛基本信息
+        Fetch basic competition info
         
         Args:
-            competition_url: 竞赛URL或ID
+            competition_url: Competition URL or ID
             
         Returns:
-            竞赛信息对象
+            CompetitionInfo object
         """
         competition_id = self.extract_competition_id(competition_url)
-        logger.info(f"获取竞赛信息: {competition_id}")
+        logger.info(f"Fetching competition info: {competition_id}")
         
         try:
-            # 获取竞赛详情
-            competition = self.api.competition_list_cli(competition_id)
+            # Get competition details
+            competition = self.api.competition_view(competition_id)
             
-            # 创建信息对象
+            # Create info object
             info = CompetitionInfo(
                 competition_id=competition_id,
                 competition_name=competition.title or competition_id,
@@ -172,15 +171,15 @@ class KaggleDataFetcher:
                 tags=competition.tags or []
             )
             
-            # 推断问题类型
+            # Infer problem type
             info.problem_type = self._infer_problem_type(info)
             
-            logger.info(f"✓ 竞赛信息获取成功: {info.competition_name}")
+            logger.info(f"✓ Competition info fetched successfully: {info.competition_name}")
             return info
             
         except Exception as e:
-            logger.error(f"获取竞赛信息失败: {e}")
-            # 返回基本信息
+            logger.error(f"Failed to fetch competition info: {e}")
+            # Return basic info
             return CompetitionInfo(
                 competition_id=competition_id,
                 competition_name=competition_id,
@@ -194,87 +193,87 @@ class KaggleDataFetcher:
         force: bool = False
     ) -> Path:
         """
-        下载竞赛数据
+        Download competition data
         
         Args:
-            competition_id: 竞赛ID
-            download_path: 下载路径（默认为data/competitions/{competition_id}）
-            force: 是否强制重新下载
+            competition_id: Competition ID
+            download_path: Download path (default is data/competitions/{competition_id})
+            force: Whether to force re-download
             
         Returns:
-            数据目录路径
+            Data directory path
         """
-        # 设置下载路径
+        # Set download path
         if download_path is None:
             download_path = config.competitions_dir / competition_id
         
         download_path.mkdir(parents=True, exist_ok=True)
         
-        # 检查是否已下载
+        # Check if already downloaded
         if not force and list(download_path.glob("*.csv")):
-            logger.info(f"数据已存在，跳过下载: {download_path}")
+            logger.info(f"Data already exists, skipping download: {download_path}")
             return download_path
         
-        logger.info(f"开始下载竞赛数据: {competition_id}")
-        logger.info(f"下载路径: {download_path}")
+        logger.info(f"Starting to download competition data: {competition_id}")
+        logger.info(f"Download path: {download_path}")
         
         try:
-            # 下载所有文件
+            # Download all files
             self.api.competition_download_files(
                 competition_id,
                 path=str(download_path),
                 quiet=False
             )
             
-            # 解压zip文件
+            # Extract zip files
             self._extract_zip_files(download_path)
             
-            logger.info(f"✓ 数据下载完成: {download_path}")
+            logger.info(f"✓ Data download completed: {download_path}")
             return download_path
             
         except Exception as e:
-            logger.error(f"下载数据失败: {e}")
+            logger.error(f"Failed to download data: {e}")
             raise
     
     def _extract_zip_files(self, directory: Path):
-        """解压目录中的所有zip文件"""
+        """Extract all zip files in the directory"""
         for zip_file in directory.glob("*.zip"):
             try:
-                logger.info(f"解压: {zip_file.name}")
+                logger.info(f"Extracting: {zip_file.name}")
                 with zipfile.ZipFile(zip_file, 'r') as zip_ref:
                     zip_ref.extractall(directory)
-                # 删除zip文件
+                # Delete zip file
                 zip_file.unlink()
-                logger.info(f"✓ 解压完成: {zip_file.name}")
+                logger.info(f"✓ Extraction completed: {zip_file.name}")
             except Exception as e:
-                logger.warning(f"解压失败 {zip_file.name}: {e}")
+                logger.warning(f"Extraction failed {zip_file.name}: {e}")
     
     def analyze_data(self, data_path: Path, info: CompetitionInfo) -> CompetitionInfo:
         """
-        分析数据集结构
+        Analyze dataset structure
         
         Args:
-            data_path: 数据目录路径
-            info: 竞赛信息对象（会被更新）
+            data_path: Data directory path
+            info: CompetitionInfo object (will be updated)
             
         Returns:
-            更新后的竞赛信息
+            Updated CompetitionInfo
         """
-        logger.info(f"开始分析数据集: {data_path}")
+        logger.info(f"Starting to analyze dataset: {data_path}")
         
         info.data_path = data_path
         
-        # 识别所有CSV文件
+        # Identify all CSV files
         csv_files = list(data_path.glob("*.csv"))
-        logger.info(f"发现 {len(csv_files)} 个CSV文件")
+        logger.info(f"Found {len(csv_files)} CSV files")
         
-        # 存储所有文件的详细信息
+        # Store detailed info of all files
         all_files_info = {}
         
         for csv_file in csv_files:
             filename = csv_file.name.lower()
             
-            # 分类文件
+            # Classify files
             if 'train' in filename:
                 info.train_files.append(csv_file.name)
             elif 'test' in filename:
@@ -282,59 +281,59 @@ class KaggleDataFetcher:
             elif 'sample' in filename or 'submission' in filename:
                 info.sample_submission_file = csv_file.name
             
-            # 分析每个CSV文件的结构
+            # Analyze structure of each CSV file
             try:
-                logger.info(f"分析文件: {csv_file.name}")
-                df = pd.read_csv(csv_file, nrows=100)  # 读取前100行了解结构
+                logger.info(f"Analyzing file: {csv_file.name}")
+                df = pd.read_csv(csv_file, nrows=100)  # Read first 100 rows to understand structure
                 
                 file_info = {
                     "filename": csv_file.name,
                     "rows_sample": len(df),
                     "columns": df.columns.tolist(),
                     "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
-                    "sample_data": df.head(3).to_dict('records')  # 前3行样例数据
+                    "sample_data": df.head(3).to_dict('records')  # First 3 rows sample data
                 }
                 
                 all_files_info[csv_file.name] = file_info
-                logger.info(f"  ✓ {csv_file.name}: {len(df.columns)} 列")
+                logger.info(f"  ✓ {csv_file.name}: {len(df.columns)} columns")
                 
             except Exception as e:
-                logger.warning(f"  ✗ 分析 {csv_file.name} 失败: {e}")
+                logger.warning(f"  ✗ Failed to analyze {csv_file.name}: {e}")
         
-        # 保存所有文件信息到extra字段
+        # Save all file info to extra field
         if not hasattr(info, 'extra_info'):
             info.extra_info = {}
         info.extra_info['all_files'] = all_files_info
         
-        # 分析训练数据（主要数据）
+        # Analyze training data (main data)
         if info.train_files:
             train_file = data_path / info.train_files[0]
             try:
-                logger.info(f"详细分析训练数据: {train_file.name}")
+                logger.info(f"Detailed analysis of training data: {train_file.name}")
                 df = pd.read_csv(train_file, nrows=1000)
                 
                 info.train_shape = (len(df), len(df.columns))
                 info.columns = df.columns.tolist()
                 info.column_types = {col: str(dtype) for col, dtype in df.dtypes.items()}
                 
-                logger.info(f"✓ 训练数据形状: {info.train_shape}")
-                logger.info(f"✓ 列数: {len(info.columns)}")
+                logger.info(f"✓ Training data shape: {info.train_shape}")
+                logger.info(f"✓ Number of columns: {len(info.columns)}")
                 
             except Exception as e:
-                logger.warning(f"分析训练数据失败: {e}")
+                logger.warning(f"Failed to analyze training data: {e}")
         
-        # 分析测试数据
+        # Analyze test data
         if info.test_files:
             test_file = data_path / info.test_files[0]
             try:
-                logger.info(f"详细分析测试数据: {test_file.name}")
+                logger.info(f"Detailed analysis of test data: {test_file.name}")
                 df = pd.read_csv(test_file, nrows=100)
                 info.test_shape = (len(df), len(df.columns))
-                logger.info(f"✓ 测试数据形状: {info.test_shape}")
+                logger.info(f"✓ Test data shape: {info.test_shape}")
             except Exception as e:
-                logger.warning(f"分析测试数据失败: {e}")
+                logger.warning(f"Failed to analyze test data: {e}")
         
-        logger.info("✓ 数据分析完成")
+        logger.info("✓ Data analysis completed")
         return info
     
     def fetch_complete_info(
@@ -344,71 +343,71 @@ class KaggleDataFetcher:
         force_download: bool = False
     ) -> CompetitionInfo:
         """
-        获取完整的竞赛信息（一站式方法）
+        Fetch complete competition info (one-stop method)
         
         Args:
-            competition_url: 竞赛URL或ID
-            download_data: 是否下载数据
-            force_download: 是否强制重新下载
+            competition_url: Competition URL or ID
+            download_data: Whether to download data
+            force_download: Whether to force re-download
             
         Returns:
-            完整的竞赛信息
+            Complete CompetitionInfo
         """
         logger.info("=" * 60)
-        logger.info("开始获取完整竞赛信息")
+        logger.info("Starting to fetch complete competition info")
         logger.info("=" * 60)
         
-        # 1. 获取基本信息
+        # 1. Get basic info
         info = self.fetch_competition_info(competition_url)
         
-        # 2. 下载数据
+        # 2. Download data
         if download_data:
             data_path = self.download_data(
                 info.competition_id,
                 force=force_download
             )
             
-            # 3. 分析数据
+            # 3. Analyze data
             info = self.analyze_data(data_path, info)
         
-        # 4. 保存信息
+        # 4. Save info
         if info.data_path:
             info_file = info.data_path / "competition_info.json"
             info.save(info_file)
-            logger.info(f"竞赛信息已保存: {info_file}")
+            logger.info(f"Competition info saved: {info_file}")
         
         logger.info("=" * 60)
-        logger.info("✓ 完整竞赛信息获取成功")
+        logger.info("✓ Complete competition info fetched successfully")
         logger.info("=" * 60)
         
         return info
     
     def _infer_problem_type(self, info: CompetitionInfo) -> str:
         """
-        根据描述和指标推断问题类型
+        Infer problem type based on description and metrics
         
         Returns:
-            问题类型：classification, regression, time_series, ranking, etc.
+            Problem type: classification, regression, time_series, ranking, etc.
         """
         text = (info.description + " " + info.evaluation_metric + " " + info.title).lower()
         
-        # 时间序列
+        # Time series
         if any(keyword in text for keyword in ['time series', 'forecasting', 'forecast', 'temporal']):
             return "time_series_forecasting"
         
-        # 分类
+        # Classification
         if any(keyword in text for keyword in ['classification', 'classify', 'class', 'accuracy', 'f1', 'auc', 'roc']):
             return "classification"
         
-        # 回归
+        # Regression
         if any(keyword in text for keyword in ['regression', 'predict', 'rmse', 'mae', 'mse', 'r2']):
             return "regression"
         
-        # 排序
+        # Ranking
         if any(keyword in text for keyword in ['ranking', 'recommend', 'retrieval']):
             return "ranking"
         
-        # 聚类
+        # Clustering
         if any(keyword in text for keyword in ['clustering', 'cluster', 'segmentation']):
             return "clustering"
         
@@ -416,7 +415,7 @@ class KaggleDataFetcher:
         if any(keyword in text for keyword in ['nlp', 'text', 'sentiment', 'language']):
             return "nlp"
         
-        # 计算机视觉
+        # Computer Vision
         if any(keyword in text for keyword in ['image', 'vision', 'detection', 'segmentation', 'object']):
             return "computer_vision"
         
@@ -424,74 +423,74 @@ class KaggleDataFetcher:
     
     def get_data_summary(self, info: CompetitionInfo) -> str:
         """
-        生成数据摘要（用于传给LLM）
+        Generate data summary (for LLM)
         
         Args:
-            info: 竞赛信息
+            info: Competition info
             
         Returns:
-            格式化的数据摘要文本
+            Formatted data summary text
         """
         summary = []
         summary.append(f"# {info.title or info.competition_name}")
         summary.append("")
-        summary.append("## 竞赛信息")
-        summary.append(f"- 竞赛ID: {info.competition_id}")
-        summary.append(f"- 问题类型: {info.problem_type}")
-        summary.append(f"- 评估指标: {info.evaluation_metric}")
+        summary.append("## Competition Info")
+        summary.append(f"- Competition ID: {info.competition_id}")
+        summary.append(f"- Problem Type: {info.problem_type}")
+        summary.append(f"- Evaluation Metric: {info.evaluation_metric}")
         
         if info.description:
             summary.append("")
-            summary.append("## 问题描述")
+            summary.append("## Problem Description")
             summary.append(info.description[:500] + "..." if len(info.description) > 500 else info.description)
         
         summary.append("")
-        summary.append("## 主要数据文件")
-        summary.append(f"- 训练文件: {', '.join(info.train_files)}")
-        summary.append(f"- 测试文件: {', '.join(info.test_files)}")
+        summary.append("## Main Data Files")
+        summary.append(f"- Train Files: {', '.join(info.train_files)}")
+        summary.append(f"- Test Files: {', '.join(info.test_files)}")
         if info.sample_submission_file:
-            summary.append(f"- 提交样例: {info.sample_submission_file}")
+            summary.append(f"- Sample Submission: {info.sample_submission_file}")
         
-        # 添加所有文件的详细信息
+        # Add detailed info of all files
         if info.extra_info and 'all_files' in info.extra_info:
             summary.append("")
-            summary.append("## 所有可用数据文件详情")
+            summary.append("## All Available Data Files Details")
             all_files = info.extra_info['all_files']
             
             for filename, file_info in all_files.items():
                 summary.append(f"\n### {filename}")
-                summary.append(f"- 列: {', '.join(file_info['columns'])}")
-                summary.append(f"- 数据类型:")
+                summary.append(f"- Columns: {', '.join(file_info['columns'])}")
+                summary.append(f"- Data Types:")
                 for col, dtype in file_info['dtypes'].items():
                     summary.append(f"  - {col}: {dtype}")
                 
-                # 添加样例数据
+                # Add sample data
                 if file_info.get('sample_data'):
-                    summary.append(f"- 样例数据（前3行）:")
+                    summary.append(f"- Sample Data (First 3 rows):")
                     for i, row in enumerate(file_info['sample_data'][:3], 1):
-                        summary.append(f"  行{i}: {row}")
+                        summary.append(f"  Row {i}: {row}")
         
         if info.train_shape:
             summary.append("")
-            summary.append("## 数据规模")
-            summary.append(f"- 训练集形状: {info.train_shape}")
+            summary.append("## Data Size")
+            summary.append(f"- Train Shape: {info.train_shape}")
             if info.test_shape:
-                summary.append(f"- 测试集形状: {info.test_shape}")
+                summary.append(f"- Test Shape: {info.test_shape}")
         
         if info.columns:
             summary.append("")
-            summary.append("## 训练数据列详情")
-            summary.append(f"共 {len(info.columns)} 列:")
+            summary.append("## Train Data Column Details")
+            summary.append(f"Total {len(info.columns)} columns:")
             for col in info.columns[:20]:
                 col_type = info.column_types.get(col, "unknown")
                 summary.append(f"  - {col}: {col_type}")
             if len(info.columns) > 20:
-                summary.append(f"  ... 还有 {len(info.columns) - 20} 列")
+                summary.append(f"  ... and {len(info.columns) - 20} more columns")
         
         summary.append("")
-        summary.append("## 重要提示")
-        summary.append("- 请充分利用所有可用的数据文件来构建特征")
-        summary.append("- 辅助数据文件（如stores, oil, holidays等）可能包含重要的预测特征")
-        summary.append("- 使用适当的join/merge操作合并数据")
+        summary.append("## Important Notes")
+        summary.append("- Please make full use of all available data files to build features")
+        summary.append("- Auxiliary data files (such as stores, oil, holidays, etc.) may contain important predictive features")
+        summary.append("- Use appropriate join/merge operations to combine data")
         
         return "\n".join(summary)

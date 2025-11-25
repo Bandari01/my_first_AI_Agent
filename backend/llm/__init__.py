@@ -1,7 +1,7 @@
 """
-LLM集成模块
+LLM Integration Module
 
-提供统一的LLM接口，支持OpenAI、Ollama等
+Provides a unified LLM interface, supporting OpenAI, Ollama, etc.
 """
 from .llm_client import LLMClient, LLMResponse
 

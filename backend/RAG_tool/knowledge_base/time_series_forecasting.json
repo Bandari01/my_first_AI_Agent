@@ -1,0 +1,20 @@
+[
+  {
+    "title": "Time series data preprocessing",
+    "type": "technique",
+    "content": "Time series data must be split in chronological order and cannot be split randomly. Use TimeSeriesSplit or split by time points. The date field must be converted to the datetime type. Extract time features such as year, month, day and week. Take seasonal factors such as weekends and holidays into consideration.",
+    "tags": ["time-series", "preprocessing", "seasonality"]
+  },
+  {
+    "title": "Store Sales specific time characteristics",
+    "type": "technique",
+    "content": "For the Store Sales competition, the features that must be created include: year, month, day, day_of_week, is_weekend. Consider the influence of store type and geographical location. The oil price (dcoilwtico) is an important external variable and missing values need to be dealt with. On-promotion activities have a direct impact on sales.",
+    "tags": ["feature-engineering", "time-series", "store-sales"]
+  },
+  {
+    "title": "Time series verification method",
+    "type": "methodology",
+    "content": "For time series data like Store Sales, random partitioning cannot be used. It should be divided in chronological order, for example, using the first 80% of the data for training and the last 20% for validation. Or use TimeSeriesSplit for cross-validation. Make sure that the time of the validation set is after that of the training set to avoid data leakage.",
+    "tags": ["validation", "time-series", "data-leakage"]
+  }
+]

@@ -1,7 +1,7 @@
 """
-Kaggle集成模块
+Kaggle Integration Module
 
-提供Kaggle竞赛数据获取、问题解析等功能
+Provides Kaggle competition data fetching, problem parsing, etc.
 """
 from .data_fetcher import KaggleDataFetcher, CompetitionInfo
 from .submission_validator import SubmissionValidator

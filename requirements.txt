@@ -10,7 +10,6 @@ streamlit
 
 # Data Processing
 python-dotenv
-pathlib
 
 # Time Series Analysis
 statsmodels

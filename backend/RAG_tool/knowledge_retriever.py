@@ -1,6 +1,7 @@
 """
-Knowledge retriever moved under backend.RAG_tool
+Knowledge retriever - completely compatible
 """
+
 import json
 import os
 from pathlib import Path
@@ -17,9 +18,7 @@ except ImportError:
 
 
 class KnowledgeRetriever:
-    def __init__(self, knowledge_base_path: str | None = None):
-        if knowledge_base_path is None:
-            knowledge_base_path = Path(__file__).resolve().parent / "knowledge_base"
+    def __init__(self, knowledge_base_path="RAG_tool/knowledge_base"):
         self.knowledge_base_path = Path(knowledge_base_path)
         self.documents = []
         self.vectorizer = None
@@ -37,7 +36,7 @@ class KnowledgeRetriever:
             "time_series_forecasting.json",
             "kaggle_best_practices.json",
             "common_errors.json",
-            "store_sales_specific.json"
+            "store_sales_specific.json"  # Add a new competition-specific knowledge file
         ]
 
         for filename in knowledge_files:
@@ -96,6 +95,7 @@ class KnowledgeRetriever:
             return []
 
         if not SKLEARN_AVAILABLE:
+            # Basic keyword matching fallback
             return self._basic_retrieve(query, top_k)
 
         try:
@@ -117,6 +117,7 @@ class KnowledgeRetriever:
             return self._basic_retrieve(query, top_k)
 
     def _basic_retrieve(self, query, top_k):
+        # Simple keyword-based retrieval
         query_terms = query.lower().split()
         scored_docs = []
 
@@ -130,6 +131,7 @@ class KnowledgeRetriever:
             if score > 0:
                 scored_docs.append((score, doc))
 
+        # Sort by score and return top_k
         scored_docs.sort(reverse=True)
         results = []
         for score, doc in scored_docs[:top_k]:
